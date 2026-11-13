@@ -2,7 +2,6 @@
 
 A multi-site enterprise network for a fictional genome research organisation, designed and simulated in **Cisco Packet Tracer 8.2**. Six research units sit on their own LANs. They are connected through a mixed Ethernet/serial WAN, addressed with **VLSM** and routed with **RIPv2 plus static routes**. Shared services include DNS, web, email and DHCP.
 
-> Group project for the Computer Networks course at BRAC University.
 
 ## Highlights
 
