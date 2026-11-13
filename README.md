@@ -15,7 +15,11 @@ A multi-site enterprise network for a fictional genome research organisation, de
 
 ## Topology
 
-![Topology](screenshots/SS-01-topology.png)
+![Topology](screenshots/Topology_Diagram.png)
+
+*Packet Tracer topology. Red zig-zag lines are the serial links (R-SCL–R-DBG and R-MDU–R-GVU).*
+
+Logical view:
 
 ```mermaid
 graph LR
@@ -91,6 +95,18 @@ Full running-configs are in [`configs/routers/`](configs/routers/).
 
 Server details and DHCP pools are in [`configs/servers.md`](configs/servers.md).
 
+### Web server
+
+| Page source on SLC-WEB | Loaded from PC-SCL-1 by name |
+|---|---|
+| ![Web source](screenshots/02a_SCL-Web_html_source.png) | ![Browser test](screenshots/02b_SCL-Web_browser_test.png) |
+
+### Email servers
+
+| SLC-Email (`sequence.bio`, user `alice`) | MDU-Email (`motif.bio`, user `bob`) |
+|---|---|
+| ![SLC-Email](screenshots/05_SCL-Email_config.png) | ![MDU-Email](screenshots/06_MDU-Email_config.png) |
+
 ## Troubleshooting & Review Findings
 
 These issues were found by reviewing the device configurations and server logs. Each one lists the symptom, the root cause and the fix.
@@ -100,6 +116,10 @@ These issues were found by reviewing the device configurations and server logs. 
 - **Symptom:** Mail from `alice@sequence.bio` to `bob@motif.bio` never arrives. Alice's mailbox on SLC-Email holds repeated *Delivery Status Notification (Failure)* bounce messages.
 - **Evidence:** The bounce message says `DNS Error: Domain name not found` for `bob@motif.bio`.
 - **Root cause:** To deliver mail, the sending server looks up the recipient's **domain** (`motif.bio`). The DNS server only has records for `mail.motif.bio` and `mail.sequence.bio`, not for the bare domains.
+
+  ![SLC-DNS records](screenshots/01_SCL-DNS_records.png)
+  *SLC-DNS holds only `mail.motif.bio`, `mail.sequence.bio` and `www.genome-lab.bio`, with no record for `motif.bio` or `sequence.bio`.*
+
 - **Fix (SLC-DNS → Services → DNS):** Add two A records.
   | Name | Type | Address |
   |---|---|---|
@@ -125,12 +145,20 @@ These issues were found by reviewing the device configurations and server logs. 
 
 - **Symptom:** The pool serving the SCL LAN (`59.98.0.0`) hands out mask `255.255.255.128` (/25), but the SCL LAN is a /22 (`255.255.252.0`). The pool is also named `GVU-POOL`, while the pool that actually serves GVU is `serverPool`.
 - **Impact:** Clients still work because their addresses (.10–.109) fall inside the /25, but they hold the wrong mask. Hosts elsewhere in the /22 would be treated as off-subnet.
+
+  ![SLC-DHCP pools](screenshots/03_SCL-DHCP_pools.png)
+  *SLC-DHCP: `GVU-POOL` actually serves the SCL LAN (gateway 59.98.0.1), and `serverPool` serves GVU (gateway 59.98.8.1).*
+
 - **Fix (SLC-DHCP → Services → DHCP):** Select the pool for network `59.98.0.0`, set the subnet mask to `255.255.252.0`, rename it to `SCL-POOL`, and click **Save**.
 - **Status:** open
 
 ### 4. MDU-DHCP range includes the broadcast address
 
 - **Symptom:** The MDU pool runs from `59.98.7.10` to `59.98.7.255`, and `.255` is the subnet's broadcast address.
+
+  ![MDU-DHCP pool](screenshots/04_MDU-DHCP_pool.png)
+  *Start 59.98.7.10 with 246 users gives 59.98.7.10–59.98.7.255.*
+
 - **Fix (MDU-DHCP → Services → DHCP):** Set **Maximum Number of Users** to `245`, so the range ends at `59.98.7.254`, then click **Save**.
 - **Status:** open
 
@@ -150,11 +178,8 @@ These issues were found by reviewing the device configurations and server logs. 
 
 ## Verification
 
-| Screenshot | What it shows |
-|---|---|
-| ![SS-02](screenshots/SS-02-show-ip-route.png) | **SS-02:** `show ip route` on R-DBG, with RIP-learned routes to every unit |
-| ![SS-03](screenshots/SS-03-ping-dns.png) | **SS-03:** From PC-ASN-1 (stub network), `ping www.genome-lab.bio`, testing DNS and end-to-end routing |
-| ![SS-04](screenshots/SS-04-email.png) | **SS-04:** Email from alice@sequence.bio delivered to bob@motif.bio after fix #1 |
+- **DNS + web:** PC-SCL-1 loads `http://www.genome-lab.bio` by name (screenshot in [Services](#web-server)).
+- **Routing:** check with the commands below on any router. `show ip route` should list RIP (`R`) routes to every unit LAN.
 
 Useful commands:
 ```
